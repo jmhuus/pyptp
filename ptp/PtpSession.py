@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from PtpAbstractTransport import PtpRequest, PtpResponse
-import PtpValues
+from .PtpAbstractTransport import PtpRequest, PtpResponse
+from . import PtpValues
 import struct
 
 

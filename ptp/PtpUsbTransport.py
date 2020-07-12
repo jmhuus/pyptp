@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import PtpAbstractTransport
+from .import PtpAbstractTransport
 import usb
 import struct
 
