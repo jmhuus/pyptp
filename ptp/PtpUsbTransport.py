@@ -173,7 +173,7 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         if transactionid != request.transactionid:
             raise UsbException("Received unexpected PTP USB transactionid (%i != %i)" % (transactionid, request.transactionid))
 
-        param_count = (data_size - 12) / 4
+        param_count = int((data_size - 12) / 4)
         params = struct.unpack("<" + ("I" * param_count), pkt[12: 12 + (4*param_count)])
         return PtpAbstractTransport.PtpResponse(code, request.sessionid, transactionid, params)
     
@@ -184,11 +184,8 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         if ep == None:
             ep = self.__bulkin
 
-        tmp = ''.join([chr(x) for x in self.__usb_handle.bulkRead(ep, urb_size, timeout)])
-        if len(tmp) == 0:
-            # Retry...
-            tmp = ''.join([chr(x) for x in self.__usb_handle.bulkRead(ep, urb_size, timeout)])
-        return tmp
+        return self.__usb_handle.bulkRead(ep, urb_size, timeout)
+
     
     def __hexdump(self, data):
         print()
