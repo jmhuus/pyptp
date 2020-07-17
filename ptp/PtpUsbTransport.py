@@ -5,6 +5,7 @@ from usb.util import endpoint_type, endpoint_direction, ENDPOINT_TYPE_BULK, \
     ENDPOINT_TYPE_INTR, ENDPOINT_IN, ENDPOINT_OUT, claim_interface
 from usb.core import find, USBError
 import struct
+import time
 
 
 class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
@@ -180,13 +181,10 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         if ep == None:
              ep = self.__bulkin
 
-        response = self.__device.read(ep, urb_size, timeout)
-        tmp = ''.join([chr(x) for x in response])
-        if len(tmp) == 0:
-            # Retry...
-            tmp = ''.join([chr(x) for x in self.__device.read(ep, urb_size, timeout)])
+        print(f"\n\n\ntimeout: {timeout}")
+        time.sleep(0.5)
+        return self.__device.read(ep, urb_size, timeout)
 
-        return tmp
     
     def __hexdump(self, data):
         print()

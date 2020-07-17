@@ -16,8 +16,8 @@ vendorId = PtpValues.Vendors.STANDARD
 try:
     import pdb; pdb.set_trace()
     ptpSession.OpenSession()
-    deviceInfo = ptpSession.GetDeviceInfo()
-    vendorId = deviceInfo.VendorExtensionID
+    # deviceInfo = ptpSession.GetDeviceInfo()
+    # vendorId = deviceInfo.VendorExtensionID
     
     id = 0
     while True:
