@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from .PtpAbstractTransport import PtpRequest, PtpResponse
+from . import PtpUsbTransport
+from .PtpUsbTransport import PtpUsbTransport
 from . import PtpValues
 import struct
 
@@ -26,6 +28,7 @@ class PtpUnpacker:
         strLen = self.raw[self.offset]
         self.offset += 1
 
+        import pdb; pdb.set_trace()
         result = self.raw[self.offset:self.offset + (strLen * 2)].decode('UTF-16-LE')
         self.offset += strLen * 2
         if result[-1:] == '\0':
@@ -275,7 +278,12 @@ class PtpSession:
         
         self.sessionid = self.transport.NewSession()
         self.__transactionid = 1
-        ptp_request = PtpRequest(PtpValues.StandardOperations.OPEN_SESSION, 0, 0, (self.sessionid, ))
+        ptp_request = PtpRequest(\
+                                 PtpValues.StandardOperations.OPEN_SESSION, \
+                                 self.sessionid, \
+                                 self.__transactionid, \
+                                 (self.sessionid, )\
+        )
         (ptp_response, rx) = self.transport.ptp_simple_transaction(ptp_request)
         if ptp_response.respcode != PtpValues.StandardResponses.OK:
             raise PtpException(ptp_response.respcode)
@@ -287,6 +295,18 @@ class PtpSession:
         (ptp_response, rx) = self.transport.ptp_simple_transaction(ptp_request)
         if ptp_response.respcode != PtpValues.StandardResponses.OK:
             raise PtpException(ptp_response.respcode)
+
+    def CloseAllSessions(self):
+        """Close the PTP session."""
+
+        sessions_closed = 0
+        while True:
+            ptp_request = PtpRequest(PtpValues.StandardOperations.CLOSE_SESSION, None, self.NewTransaction())
+            (ptp_response, rx) = self.transport.ptp_simple_transaction(ptp_request)
+            if ptp_response.respcode == PtpValues.StandardResponses.OK:
+                sessions_closed += 1
+            else:
+                return sessions_closed
 
     def GetDeviceInfo(self):
         """Get Device info from a PTP device.
@@ -591,4 +611,12 @@ class PtpSession:
 class PtpException(Exception):
 
     def __init__(self, responsecode):
+
+        # Remove any lasting PTP sessions
+        import pdb; pdb.set_trace()
+        if responsecode == PtpValues.StandardResponses.SESSION_ALREADY_OPEN:
+            ptpTransport = PtpUsbTransport(PtpUsbTransport.findptps()[0])
+            ptpSession = PtpSession(ptpTransport)
+            ptpSession.CloseAllSessions()
+        
         self.responsecode = responsecode

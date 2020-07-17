@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from .import PtpAbstractTransport
 import usb
+from usb.util import endpoint_type, endpoint_direction, ENDPOINT_TYPE_BULK, \
+    ENDPOINT_TYPE_INTR, ENDPOINT_IN, ENDPOINT_OUT, claim_interface
+from usb.core import find, USBError
 import struct
 
 
@@ -8,7 +11,6 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
     """Class defining a PTP USB transport."""
     
     USB_CLASS_PTP                           = 6
-    
     PTP_USB_CONTAINER_COMMAND               = 1
     PTP_USB_CONTAINER_DATA                  = 2
     PTP_USB_CONTAINER_RESPONSE              = 3
@@ -19,34 +21,30 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         
         Arguments:
         device -- USB ptp device."""
+
+        # Device
+        self.__device = device
                 
-        # Check the device is a PTP one
-        if (device.configurations[0].interfaces[0][0].interfaceClass != self.USB_CLASS_PTP):
-            raise UsbException("Supplied USB device is not a PTP device")
-        if (device.deviceClass == usb.CLASS_HUB):
-            raise UsbException("Supplied USB device is not a PTP device")
+        # Device interface
+        self.__usb_interface = PtpUsbTransport.retrieve_device_interface(self.__device)
+        if self.__usb_interface.bInterfaceClass != PtpUsbTransport.USB_CLASS_PTP:
+            raise UsbException("Device")            
         
-        # Find the endpoints we need
+        # Device endpoints
         self.__bulkin = None
         self.__bulkout = None
         self.__irqin = None
-        for ep in device.configurations[0].interfaces[0][0].endpoints:
-            if ep.type == usb.ENDPOINT_TYPE_BULK:
-                if (ep.address & usb.ENDPOINT_DIR_MASK) == usb.ENDPOINT_IN:
-                    self.__bulkin = ep.address
-                elif (ep.address & usb.ENDPOINT_DIR_MASK) == usb.ENDPOINT_OUT:
-                    self.__bulkout = ep.address
-            elif ep.type == usb.ENDPOINT_TYPE_INTERRUPT:
-                self.__irqin = ep.address
-                
-        if  (self.__bulkin == None) or (self.__bulkout == None) or (self.__irqin == None):
+        self.__bulkin, self.__bulkout, self.__irqin = PtpUsbTransport.retrieve_device_endpoints(self.__device)
+        if (self.__bulkin == None) or (self.__bulkout == None) or (self.__irqin == None):
             raise RuntimeError("Unable to find all required endpoints")
 
         # Open the USB device
-        self.__usb_interface = device.configurations[0].interfaces[0][0]
-        self.__usb_handle = device.open()
-        self.__usb_handle.setConfiguration(device.configurations[0])
-        self.__usb_handle.claimInterface(device.configurations[0].interfaces[0][0])
+        self.__usb_handle = self.__device.backend
+        test = self.__device.configurations()[0]
+        # self.__usb_handle.set_configuration(test)
+        claim_interface(self.__device, self.__usb_interface)
+        device_name = PtpUsbTransport.retrieve_device_name(self.__device)
+        print(f"Connected to {device_name}.")
         self.usb_read_timeout = 5000
         self.usb_write_timeout = 5000
 
@@ -55,7 +53,7 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         """Cleanup a PtpUsbTransport structure."""
         
         try:
-            self.__usb_handle.releaseInterface(self.__usb_interface)
+            self.__usb_handle.release_interface(self.__usb_interface)
             del self.__usb_handle
         except:
             pass
@@ -66,8 +64,10 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         buffer = struct.pack("<IHHI", length, self.PTP_USB_CONTAINER_COMMAND, request.opcode, request.transactionid)
         for p in request.params:
             buffer += struct.pack("<I", p)
-            
-        if self.__usb_handle.bulkWrite(self.__bulkout, buffer, self.usb_write_timeout) != length:
+
+
+        testyy = self.__bulkout
+        if self.__usb_handle.bulk_write(self.__bulkout, buffer, self.usb_write_timeout) != length:
             raise UsbException(usb.USBError)
 
     
@@ -77,7 +77,7 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
 
         # NOTE: UNTESTED CODE
         while len(buffer) > 0:
-            tmp = self.__usb_handle.bulkWrite(self.__bulkout, buffer, self.usb_write_timeout)
+            tmp = self.__usb_handle.bulk_write(self.__bulkout, buffer, self.usb_write_timeout)
             if tmp == 0:
                 raise UsbException(usb.USBError)
 
@@ -179,13 +179,15 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
     
 
     def __usb_bulkread(self, urb_size=512, timeout=None, ep=None):
-        if timeout == None:
-            timeout = self.usb_read_timeout
         if ep == None:
-            ep = self.__bulkin
+             ep = self.__bulkin
 
-        return self.__usb_handle.bulkRead(ep, urb_size, timeout)
+        tmp = ''.join([chr(x) for x in self.__usb_handle.bulk_read(ep, urb_size, timeout)])
+        if len(tmp) == 0:
+            # Retry...
+            tmp = ''.join([chr(x) for x in self.__usb_handle.bulk_read(ep, urb_size, timeout)])
 
+        return tmp
     
     def __hexdump(self, data):
         print()
@@ -193,18 +195,78 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
             print(hex(ord(b)))
 
     @classmethod
-    def findptps(cls):
-        ptps = ()
+    def findptps(cls, device_class):
 
-        for bus in usb.busses():
-            for device in bus.devices:
-                if (device.configurations[0].interfaces[0][0].interfaceClass != PtpUsbTransport.USB_CLASS_PTP):
-                    continue
-                if (device.deviceClass == usb.CLASS_HUB):
-                    continue
-                ptps += (device, )
+        # find all usb devices
+        devices = usb.core.find(find_all=True)
 
-        return ptps
+        # Loop through the device's metadata and retrieve it's endpoints
+        device = None
+        for dev in devices:
+            for config in dev:
+                for intf in config:
+                    if intf.bInterfaceClass == device_class:
+                        device = dev
+                        break
+                    else:
+                        continue
+
+                if device is not None:
+                    break
+
+            if device is not None:
+                break
+
+        if device:
+            return device
+        else:
+            raise UsbException("USB camera not found.")
+
+
+    @classmethod
+    def retrieve_device_endpoints(cls, device, return_endpoint_address=False):
+        ep_bulk_in = None
+        ep_bulk_out = None
+        ep_interrupt_in = None
+        
+        # Retrieve device endpoints (BULK and INTERRUPT)
+        for config in device:
+            for intf in config:
+                for ep in intf.endpoints():
+                        
+                    ep_type = endpoint_type(ep.bmAttributes)
+                    ep_direction = endpoint_direction(ep.bEndpointAddress)
+                    if ep_type == ENDPOINT_TYPE_BULK and ep_direction == ENDPOINT_IN:
+                        ep_bulk_in = ep
+                    elif ep_type == ENDPOINT_TYPE_BULK and ep_direction == ENDPOINT_OUT:
+                        ep_bulk_out = ep
+                    elif ep_type == ENDPOINT_TYPE_INTR and ep_direction == ENDPOINT_IN:
+                        ep_interrupt_in = ep
+                
+        # Ensure that all three endpoints are found
+        if not ep_bulk_in:
+            raise Exception("Missing bulk in endpoint.")
+        elif not ep_bulk_out:
+            raise Exception("Missing bulk out endpoint.")
+        elif not ep_interrupt_in:
+            raise Exception("Missing interrupt in endpoint.")
+
+        if return_endpoint_address:
+            return ep_bulk_in.address, ep_bulk_out.address, ep_interrupt_in.address
+        else:
+            return ep_bulk_in, ep_bulk_out, ep_interrupt_in
+
+
+    @classmethod
+    def retrieve_device_interface(cls, device):
+        for config in device:
+            for intf in config:
+                return intf
+
+    @classmethod
+    def retrieve_device_name(cls, device):
+        return usb.util.get_string(device, device.iProduct)
+
 
 class UsbException(Exception):
 

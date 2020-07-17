@@ -7,17 +7,21 @@ from ptp.PtpUsbTransport import PtpUsbTransport
 from ptp.PtpSession import PtpSession, PtpException
 from ptp import PtpValues
 
-ptpTransport = PtpUsbTransport(PtpUsbTransport.findptps()[0])
+ptpTransport = PtpUsbTransport(PtpUsbTransport.findptps(PtpUsbTransport.USB_CLASS_PTP))
+bulk_in, bulk_out, interrupt_in = \
+    PtpUsbTransport.retrieve_device_endpoints(PtpUsbTransport.findptps(PtpUsbTransport.USB_CLASS_PTP))
 ptpSession = PtpSession(ptpTransport)
 
 vendorId = PtpValues.Vendors.STANDARD
 try:
+    import pdb; pdb.set_trace()
     ptpSession.OpenSession()
     deviceInfo = ptpSession.GetDeviceInfo()
     vendorId = deviceInfo.VendorExtensionID
     
     id = 0
     while True:
+        import pdb; pdb.set_trace()
         ptpSession.InitiateCapture(objectFormatId=PtpValues.StandardObjectFormats.EXIF_JPEG)
 
         objectid = None
