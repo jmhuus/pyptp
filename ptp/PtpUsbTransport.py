@@ -39,8 +39,6 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
             raise RuntimeError("Unable to find all required endpoints")
 
         # Open the USB device
-        self.__usb_handle = self.__device.backend
-        test = self.__device.configurations()[0]
         # self.__usb_handle.set_configuration(test)
         claim_interface(self.__device, self.__usb_interface)
         device_name = PtpUsbTransport.retrieve_device_name(self.__device)
@@ -67,7 +65,7 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
 
 
         testyy = self.__bulkout
-        if self.__usb_handle.bulk_write(self.__bulkout, buffer, self.usb_write_timeout) != length:
+        if self.__device.write(self.__bulkout, buffer, self.usb_write_timeout) != length:
             raise UsbException(usb.USBError)
 
     
@@ -182,10 +180,11 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         if ep == None:
              ep = self.__bulkin
 
-        tmp = ''.join([chr(x) for x in self.__usb_handle.bulk_read(ep, urb_size, timeout)])
+        response = self.__device.read(ep, urb_size, timeout)
+        tmp = ''.join([chr(x) for x in response])
         if len(tmp) == 0:
             # Retry...
-            tmp = ''.join([chr(x) for x in self.__usb_handle.bulk_read(ep, urb_size, timeout)])
+            tmp = ''.join([chr(x) for x in self.__device.read(ep, urb_size, timeout)])
 
         return tmp
     
