@@ -7,5 +7,5 @@ This code came from code.google.com/archive/p/pyptp and has been modified to be 
 1. Set up virtual environment with Python3 `virtualenv -p python3 environments/env_[environment name]`
 2. `source environments/env_[environment name]/bin/activate`
 3. Connect DSLR camera
-4. python Capture.py
+4. `python Capture.py`
 5. Check working directory for resulting image(s)
