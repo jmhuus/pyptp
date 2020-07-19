@@ -156,7 +156,7 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
 
         # Parse it
         (transactionid, ) = struct.unpack("<I", pkt[0:4])
-        params = struct.unpack("<" + ("I" * param_count), pkt[4:])
+        params = struct.unpack("<" + ("I" * int(param_count)), pkt[4:])
 
         return PtpAbstractTransport.PtpEvent(code, sessionid, transactionid, params)
 
@@ -181,8 +181,6 @@ class PtpUsbTransport(PtpAbstractTransport.PtpAbstractTransport):
         if ep == None:
              ep = self.__bulkin
 
-        print(f"\n\n\ntimeout: {timeout}")
-        time.sleep(0.5)
         return self.__device.read(ep, urb_size, timeout)
 
     

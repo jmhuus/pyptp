@@ -14,14 +14,12 @@ ptpSession = PtpSession(ptpTransport)
 
 vendorId = PtpValues.Vendors.STANDARD
 try:
-    import pdb; pdb.set_trace()
     ptpSession.OpenSession()
     # deviceInfo = ptpSession.GetDeviceInfo()
     # vendorId = deviceInfo.VendorExtensionID
     
     id = 0
     while True:
-        import pdb; pdb.set_trace()
         ptpSession.InitiateCapture(objectFormatId=PtpValues.StandardObjectFormats.EXIF_JPEG)
 
         objectid = None
@@ -34,7 +32,7 @@ try:
                 break
 
         if objectid != None:
-            file = open("capture_%i.jpg" % id, "w")
+            file = open("capture_%i.jpg" % id, "wb")
             ptpSession.GetObject(objectid, file)
             file.close()
             id+=1

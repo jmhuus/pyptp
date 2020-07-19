@@ -28,7 +28,6 @@ class PtpUnpacker:
         strLen = self.raw[self.offset]
         self.offset += 1
 
-        import pdb; pdb.set_trace()
         result = self.raw[self.offset:self.offset + (strLen * 2)].decode('UTF-16-LE')
         self.offset += strLen * 2
         if result[-1:] == '\0':
@@ -613,7 +612,6 @@ class PtpException(Exception):
     def __init__(self, responsecode):
 
         # Remove any lasting PTP sessions
-        import pdb; pdb.set_trace()
         if responsecode == PtpValues.StandardResponses.SESSION_ALREADY_OPEN:
             ptpTransport = PtpUsbTransport(PtpUsbTransport.findptps()[0])
             ptpSession = PtpSession(ptpTransport)

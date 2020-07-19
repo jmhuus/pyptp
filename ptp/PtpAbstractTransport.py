@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import struct
+import time
 
 
 class PtpRequest:
@@ -130,12 +131,14 @@ class PtpAbstractTransport:
         if tx_data != None:
             self.send_ptp_data(request, tx_data)
         elif receiving:
+            time.sleep(0.5)
             rx_data = self.get_ptp_data(request)
             if isinstance(rx_data, PtpResponse):
                 response = rx_data
                 rx_data = None
         
         if response == None:
+            time.sleep(0.5)
             response = self.get_ptp_response(request)
 
         return (response, rx_data)
