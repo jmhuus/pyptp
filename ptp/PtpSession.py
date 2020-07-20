@@ -333,10 +333,12 @@ class PtpSession:
         # Convert any operation codes to names
         for attribute in device_attributes:
             if attribute == "OperationsSupported":
+                device_info_specs += "OperationsSupported:\n"
                 for operation in device_info.__getattribute__(attribute):
                     for key, value in PtpValues.StandardOperations.__dict__.items():
                         if operation == value:
                             device_info_specs += "  " + key + ": " + str(value) + "\n"
+            # TODO(jmhuus): retrieve capture format code mapping name
             elif attribute == "CaptureFormats":
                 device_info_specs += attribute + ": " + str(device_info.__getattribute__(attribute)) + "\n"
             else:

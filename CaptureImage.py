@@ -7,6 +7,7 @@ from ptp.PtpUsbTransport import PtpUsbTransport
 from ptp.PtpSession import PtpSession, PtpException
 from ptp import PtpValues
 import time
+from datetime import datetime
 
 
 
@@ -32,9 +33,8 @@ def capture_new_image(file=None):
         # Open device session
         ptpSession.OpenSession()
         print(ptpSession.GetFormattedDeviceInfoString())
-
-        id = 0
         ptpSession.InitiateCapture(objectFormatId=PtpValues.StandardObjectFormats.EXIF_JPEG)
+        recorded_time = datetime.now()
 
         # Check for new object added after capture
         objectid = None
@@ -49,10 +49,9 @@ def capture_new_image(file=None):
         # Download newly added object
         if objectid != None:
             if file is None:
-                file = open("capture_%i.jpg" % id, "wb")
+                file = open("images/capture_%s.jpg" % recorded_time.strftime("%Y_%m_%d_%H_%M_%S"), "wb")
             ptpSession.GetObject(objectid, file)
             file.close()
-            id+=1
             ptpSession.DeleteObject(objectid)
 
     except PtpException as e:
