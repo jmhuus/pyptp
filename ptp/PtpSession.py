@@ -28,7 +28,8 @@ class PtpUnpacker:
         strLen = self.raw[self.offset]
         self.offset += 1
 
-        result = self.raw[self.offset:self.offset + (strLen * 2)].decode('UTF-16-LE')
+        test = self.raw[self.offset:self.offset + (strLen * 2)]
+        result = struct.pack("<"+"b"*len(test), *test).decode('UTF-16-LE')
         self.offset += strLen * 2
         if result[-1:] == '\0':
             result = result[:-1]
@@ -317,6 +318,31 @@ class PtpSession:
         if ptp_response.respcode != PtpValues.StandardResponses.OK:
             raise PtpException(ptp_response.respcode)
         return PtpDeviceInfo(rx[1])
+
+    def GetFormattedDeviceInfoString(self):
+        """Get string representation of device info from a PTP device.
+        
+        Returns: String of device info specs."""
+
+        device_info = self.GetDeviceInfo()
+        device_attributes = \
+            ["Manufacturer", "Model", "SerialNumber", "DeviceVersion", "VendorExtensionID", \
+             "OperationsSupported", "CaptureFormats"]
+        device_info_specs = ""
+
+        # Convert any operation codes to names
+        for attribute in device_attributes:
+            if attribute == "OperationsSupported":
+                for operation in device_info.__getattribute__(attribute):
+                    for key, value in PtpValues.StandardOperations.__dict__.items():
+                        if operation == value:
+                            device_info_specs += "  " + key + ": " + str(value) + "\n"
+            elif attribute == "CaptureFormats":
+                device_info_specs += attribute + ": " + str(device_info.__getattribute__(attribute)) + "\n"
+            else:
+                device_info_specs += attribute + ": " + str(device_info.__getattribute__(attribute)) + "\n"
+
+        return device_info_specs
 
     def GetStorageIDs(self):
         """Get list of storages a PTP device.

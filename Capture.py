@@ -15,8 +15,7 @@ ptpSession = PtpSession(ptpTransport)
 vendorId = PtpValues.Vendors.STANDARD
 try:
     ptpSession.OpenSession()
-    # deviceInfo = ptpSession.GetDeviceInfo()
-    # vendorId = deviceInfo.VendorExtensionID
+    print(ptpSession.GetFormattedDeviceInfoString())
     
     id = 0
     while True:
